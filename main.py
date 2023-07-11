@@ -13,6 +13,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import ElementNotInteractableException
 import time
 import random
 import os
@@ -26,6 +27,13 @@ log_file_path = os.path.join(home_dir, 'Documents', 'Clicker_Log.txt')
 
 logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+winnings_log_file_path = os.path.join(home_dir, 'Documents', 'Winnings.txt')
+winnings_log = logging.getLogger('winnings_log')
+winnings_log.setLevel(logging.INFO)
+winnings_file_handler = logging.FileHandler(winnings_log_file_path)
+winnings_file_handler.setLevel(logging.INFO)
+winnings_log.addHandler(winnings_file_handler)
+
 
 def humanImitator(min_time, max_time):
     sleep_time = random.uniform(min_time, max_time)
@@ -36,7 +44,6 @@ def close_popup(driver):
     try:
         deny_button = driver.find_element(By.XPATH, '//*[@class="pushpad_deny_button"]')
         driver.execute_script("arguments[0].click();", deny_button)
-        logging.info("Popup closed")
     except NoSuchElementException:
         pass
 
@@ -67,12 +74,15 @@ def writeScore(driver, log_total_count):
 
     if rollAmt_int == 10000:
         logging.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
+        winnings_log.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
         print("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
     elif 9993 < rollAmt_int < 9994:
         logging.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        winnings_log.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
         print("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
     else:
         logging.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        winnings_log.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
         print("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
 
     log_total_count[0] += 1
@@ -81,6 +91,8 @@ def writeScore(driver, log_total_count):
         try:
             balance = driver.find_element(By.XPATH, '//*[@id="balance"]')
             logging.info(">>>Current Balance: \t" + "BTC: " + str(balance.text))
+            winnings_log.info(">>>Current Balance: \t" + "BTC: " + str(balance.text))
+            print(">>>Current Balance: \t" + "BTC: " + str(balance.text))
         except NoSuchElementException:
             error_message = "ERROR: Balance element not found!!"
             print(error_message)
@@ -93,10 +105,11 @@ def autoMacro():
     logging.info("Initializing...")
     print("Initializing...")
 
-    log_total_count = [0]  # Wrap log_total_count in a list to allow it to be mutable
+    log_total_count = [0]
 
     chrome_options = Options()
     driver = webdriver.Chrome(options=chrome_options)
+    driver.set_window_size(1200, 700)
 
     def signal_handler(signal, frame):
         driver.quit()
@@ -110,13 +123,15 @@ def autoMacro():
             print("WELCOME: Please log in...")
 
             driver.get("https://freebitco.in/#")
-            print("MACRO: This script takes about 30 seconds to activate, use that time to log in.\nIf you do not have an "
+            print("MACRO: This script takes about 30 seconds to activate, use that time to log in.\nIf you do not "
+                  "have an"
                   "account, https://freebitco.in/?r=51036102.")
             print("\n")
             print("WELCOME: Please log in...")
-            time.sleep(5)
+
+            time.sleep(4.5)
             close_popup(driver)
-            time.sleep(10)
+            time.sleep(10.5)
             print("ACTIVE: Log file being written to " + log_file_path + "\nMACRO: 15 seconds remaining till first click")
             time.sleep(15)
             time.sleep(2)
@@ -125,11 +140,13 @@ def autoMacro():
                 while True:
                     try:
                         close_popup(driver)
+                        time.sleep(1)
                         roll(driver)
+                        time.sleep(2)
                         writeScore(driver, log_total_count)
 
-                        time.sleep(3605)
-                        humanImitator(14, 123)
+                        time.sleep(3601)
+                        humanImitator(14, 83)
 
                     except NoSuchElementException:
                         error_message = "ERROR: Roll button not found!\nHave you logged in?"
@@ -138,6 +155,15 @@ def autoMacro():
                         print("WAITING: 15 seconds for login")
                         logging.info("Login timed out, waiting...")
                         time.sleep(15)
+
+                    except ElementNotInteractableException:
+                        error_message = "ERROR: Button not interactable. Checking for pop-up or " \
+                                        "wait-timer.\nAttempting again in 30 seconds.\nIf this persists longer than 2 " \
+                                        "hours, please check the Readme.txt"
+                        print(error_message)
+                        logging.error(error_message)
+                        close_popup(driver)
+                        time.sleep(30)
 
             except NoSuchElementException:
                 error_message = "ERROR: Roll button not found!\nHave you logged in?"
