@@ -14,6 +14,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 import time
+import random
 import os
 import signal
 import sys
@@ -23,14 +24,77 @@ import logging
 home_dir = Path.home()
 log_file_path = os.path.join(home_dir, 'Documents', 'Clicker_Log.txt')
 
-# Configure the logging
 logging.basicConfig(filename=log_file_path, level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-def autoclicker():
-    logging.info("[STARTUP]")
-    logging.info("Initializing...")
 
-    log_total_count = 0
+def humanImitator(min_time, max_time):
+    sleep_time = random.uniform(min_time, max_time)
+    time.sleep(sleep_time)
+
+
+def close_popup(driver):
+    try:
+        deny_button = driver.find_element(By.XPATH, '//*[@class="pushpad_deny_button"]')
+        driver.execute_script("arguments[0].click();", deny_button)
+        logging.info("Popup closed")
+    except NoSuchElementException:
+        pass
+.
+
+def roll(driver):
+    target_div = driver.find_element(By.XPATH, '//*[@id="free_play_form_button"]')
+    x = target_div.location['x']
+    y = target_div.location['y']
+    driver.execute_script(f"window.scrollTo({x}, {y});")
+    target_div.click()
+
+
+def writeScore(driver, log_total_count):
+    reward_element = driver.find_element(By.XPATH, '//*[@id="winnings"]')
+    rewardAmt = reward_element.text.strip()
+
+    rollAmt = ""
+    try:
+        ordinals = ["first", "second", "third", "fourth", "fifth"]
+        for ordinal in ordinals:
+            digit_element = driver.find_element(By.XPATH,f'//*[@id="free_play_digits"]/span[@id="free_play_{ordinal}_digit"]')
+            rollAmt += digit_element.text.strip()
+    except NoSuchElementException:
+        error_message = "ERROR: Roll number digits not found!"
+        print(error_message)
+        logging.error(error_message)
+
+    rollAmt_int = int(rollAmt)
+
+    if rollAmt_int == 10000:
+        logging.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
+        print("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
+    elif 9993 < rollAmt_int < 9994:
+        logging.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        print("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+    else:
+        logging.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        print("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+
+    log_total_count[0] += 1
+
+    if log_total_count[0] % 7 == 0:
+        try:
+            balance = driver.find_element(By.XPATH, '//*[@id="balance"]')
+            logging.info(">>>Current Balance: \t" + "BTC: " + str(balance.text))
+        except NoSuchElementException:
+            error_message = "ERROR: Balance element not found!!"
+            print(error_message)
+            logging.error(error_message)
+
+
+def autoMacro():
+    logging.info("[STARTUP]")
+    print("[STARTUP]")
+    logging.info("Initializing...")
+    print("Initializing...")
+
+    log_total_count = [0]  # Wrap log_total_count in a list to allow it to be mutable
 
     chrome_options = Options()
     driver = webdriver.Chrome(options=chrome_options)
@@ -41,89 +105,51 @@ def autoclicker():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    logging.info("Waiting for login.")
-    print("WELCOME: Please log in...")
-
-    driver.get("https://freebitco.in/#")
-    print("This script takes about 30 seconds to activate, use that time to log in.\nIf you do have have an "
-          "account, https://freebitco.in/?r=51036102.")
-    print("\n\n")
-    print("WELCOME: Please log in...")
-    time.sleep(30)
-
-    print("ACTIVE: Log file being written to " + log_file_path)
-
     try:
         while True:
+            logging.info("Waiting for login...")
+            print("WELCOME: Please log in...")
+
+            driver.get("https://freebitco.in/#")
+            print("MACRO: This script takes about 30 seconds to activate, use that time to log in.\nIf you do not have an "
+                  "account, https://freebitco.in/?r=51036102.")
+            print("\n")
+            print("WELCOME: Please log in...")
+            time.sleep(5)
+            close_popup(driver)
+            time.sleep(10)
+            print("ACTIVE: Log file being written to " + log_file_path + "\nMACRO: 15 seconds remaining till first click")
+            time.sleep(15)
+            time.sleep(2)
+
             try:
-                target_div = driver.find_element(By.XPATH, '//*[@id="free_play_form_button"]')
-                x = target_div.location['x']
-                y = target_div.location['y']
-
-                driver.execute_script(f"window.scrollTo({x}, {y});")
-
-                target_div.click()
-
-                try:
-                    reward_element = driver.find_element(By.XPATH, '//*[@id="winnings"]')
-                    rewardAmt = reward_element.text.strip()
-
-                    rollAmt = "00000"
+                while True:
                     try:
-                        ordinals = ["first", "second", "third", "fourth", "fifth"]
-                        for ordinal in ordinals:
-                            digit_element = driver.find_element(By.XPATH, f'//*[@id="free_play_{ordinal}_digit"]')
-                            rollAmt += digit_element.text.strip()
+                        close_popup(driver)
+                        roll(driver)
+                        writeScore(driver, log_total_count)
+
+                        time.sleep(3605)
+                        humanImitator(14, 123)
 
                     except NoSuchElementException:
-                        error_message = "ERROR: Roll number digits not found!"
+                        error_message = "ERROR: Roll button not found!\nHave you logged in?"
                         print(error_message)
                         logging.error(error_message)
-
-                    rollAmt_int = int(rollAmt)
-
-                    if rollAmt_int == 10000:
-                        logging.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
-                        print("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
-                    elif 9993 < rollAmt_int < 9994:
-                        logging.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-                        print("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-                    else:
-                        logging.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-                        print("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-
-
-                    log_total_count += 1
-
-                    if log_total_count % 7 == 0:
-                        try:
-                            balance = driver.find_element(By.XPATH, '//*[@id="balance"]')
-                            logging.info(">>>Current Balance: \t" + "BTC: " + str(balance.text))
-                        except NoSuchElementException:
-                            error_message = "ERROR: Balance element not found!!"
-                            print(error_message)
-                            logging.error(error_message)
-
-                except NoSuchElementException:
-                    error_message = "ERROR: Reward or Roll element not found!"
-                    print(error_message)
-                    logging.error(error_message)
-                    rewardAmt = "Null"
-                    rollAmt = "0000"
+                        print("WAITING: 15 seconds for login")
+                        logging.info("Login timed out, waiting...")
+                        time.sleep(15)
 
             except NoSuchElementException:
-                error_message = "ERROR: Roll button not found! Have you logged in?"
+                error_message = "ERROR: Roll button not found!\nHave you logged in?"
                 print(error_message)
                 logging.error(error_message)
-                print("WAITING: 30 seconds")
-                logging.info("WAITING: 30 seconds")
-                time.sleep(30)
-
-            time.sleep(3610)
+                print("WAITING: 15 seconds for login")
+                logging.info("Login timed out, waiting...")
+                time.sleep(15)
 
     except KeyboardInterrupt:
         driver.quit()
 
-
 if __name__ == "__main__":
-    autoclicker()
+    autoMacro()
