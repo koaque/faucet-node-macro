@@ -39,7 +39,6 @@ def close_popup(driver):
         logging.info("Popup closed")
     except NoSuchElementException:
         pass
-.
 
 def roll(driver):
     target_div = driver.find_element(By.XPATH, '//*[@id="free_play_form_button"]')
