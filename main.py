@@ -10,7 +10,7 @@ I would much appreciate if you use my referral link: https://freebitco.in/?r=510
 """
 
 from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
@@ -107,13 +107,8 @@ def autoMacro():
 
     log_total_count = [0]
 
-    options = Options()
-    options.add_argument('--headless=False')
-
-    # Browser size control
-    options.add_argument('window-size=1400x1000')
-    driver = webdriver.Firefox(options=options)
-
+    chrome_options = Options()
+    driver = webdriver.Chrome(options=chrome_options)
     driver.set_window_size(1200, 700)
 
     def signal_handler(signal, frame):
