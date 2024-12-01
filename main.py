@@ -10,15 +10,12 @@ I would much appreciate if you use my referral link: https://freebitco.in/?r=510
 """
 
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import ElementNotInteractableException
 import time
 import random
 import os
-import signal
-import sys
 from pathlib import Path
 import logging
 
@@ -57,33 +54,37 @@ def roll(driver):
 
 def writeScore(driver, log_total_count):
     reward_element = driver.find_element(By.XPATH, '//*[@id="winnings"]')
-    rewardAmt = reward_element.text.strip()
+    reward_amt = reward_element.text.strip()
 
-    rollAmt = ""
+    roll_amt = ""
     try:
         ordinals = ["first", "second", "third", "fourth", "fifth"]
         for ordinal in ordinals:
             digit_element = driver.find_element(By.XPATH,f'//*[@id="free_play_digits"]/span[@id="free_play_{ordinal}_digit"]')
-            rollAmt += digit_element.text.strip()
+            roll_amt += digit_element.text.strip()
     except NoSuchElementException:
         error_message = "ERROR: Roll number digits not found!"
         print(error_message)
         logging.error(error_message)
 
-    rollAmt_int = int(rollAmt)
+    rollAmt_int = int(roll_amt)
 
     if rollAmt_int == 10000:
-        logging.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
-        winnings_log.info("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
-        print("*^*JACKPOT*^*\t| BTC: " + rewardAmt)
-    elif 9993 < rollAmt_int < 9994:
-        logging.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-        winnings_log.info("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-        print("LUCKY!!\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        logging.info("*^*JACKPOT*^*\t| BTC: " + reward_amt)
+        winnings_log.info("*^*JACKPOT*^*\t| BTC: " + reward_amt)
+        print("*^*JACKPOT*^*\t| BTC: " + reward_amt)
+    elif 9986 < rollAmt_int < 10000:
+        logging.info("LUCKY!!\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
+        winnings_log.info("LUCKY!!\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
+        print("LUCKY!!\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
+    elif 9886 < rollAmt_int < 9986:
+        logging.info("NICE!\t| BTC: " + reward_amt)
+        winnings_log.info("NICE!\t| BTC: " + reward_amt)
+        print("NICE!\t| BTC: " + reward_amt)
     else:
-        logging.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-        winnings_log.info("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
-        print("SUCCESS\t| Roll: " + rollAmt + "\t| BTC: " + rewardAmt)
+        logging.info("ROLLED\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
+        winnings_log.info("ROLLED\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
+        print("ROLLED\t| Roll: " + roll_amt + "\t| BTC: " + reward_amt)
 
     log_total_count[0] += 1
 
@@ -107,15 +108,9 @@ def autoMacro():
 
     log_total_count = [0]
 
-    chrome_options = Options()
+    chrome_options = webdriver.ChromeOptions()
     driver = webdriver.Chrome(options=chrome_options)
-    driver.set_window_size(1200, 700)
-
-    def signal_handler(signal, frame):
-        driver.quit()
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
+    driver.set_window_size(1280, 720)
 
     try:
         while True:
@@ -132,19 +127,21 @@ def autoMacro():
             time.sleep(4.5)
             close_popup(driver)
             time.sleep(10.5)
-            print("ACTIVE: Log file being written to " + log_file_path + "\nMACRO: 15 seconds remaining till first click")
+            print("ACTIVE: Log file being written to " + log_file_path)
+            print("MACRO: Winnings being written to " + winnings_log_file_path + "\nMACRO: 15 seconds remaining till "
+                                                                                 "first click")
             time.sleep(15)
-            time.sleep(2)
 
             try:
                 while True:
                     try:
                         close_popup(driver)
                         time.sleep(1)
+
                         roll(driver)
                         time.sleep(2)
-                        writeScore(driver, log_total_count)
 
+                        writeScore(driver, log_total_count)
                         time.sleep(3601)
                         humanImitator(14, 83)
 
@@ -158,12 +155,21 @@ def autoMacro():
 
                     except ElementNotInteractableException:
                         error_message = "ERROR: Button not interactable. Checking for pop-up or " \
-                                        "wait-timer.\nAttempting again in 30 seconds.\nIf this persists longer than 2 " \
-                                        "hours, please check the Readme.txt"
+                                        "wait-timer..."
                         print(error_message)
-                        logging.error(error_message)
+                        logging.error("ERR: Roll button found, not interactable")
                         close_popup(driver)
-                        time.sleep(30)
+                        try:
+                            wait_time_element = driver.find_element(By.XPATH, "/html/body/div[2]/div/div/div[7]/div[3]/div[1]/span/span[1]/span")
+                            wait_time_in_minutes = int(
+                                wait_time_element.text.strip())
+
+                            print(f"Waiting for {wait_time_in_minutes+60} minutes...")
+                            time.sleep((wait_time_in_minutes * 60) + 60)
+                        except NoSuchElementException:
+                            print("Wait Timer not found.\nHave you logged in? Trying again in 10 seconds.")
+                            logging.error("ERR: Wait timer not found!")
+                            time.sleep(10)
 
             except NoSuchElementException:
                 error_message = "ERROR: Roll button not found!\nHave you logged in?"
